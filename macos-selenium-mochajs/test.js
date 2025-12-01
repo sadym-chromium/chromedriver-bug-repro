@@ -21,8 +21,7 @@ const fs = require('fs');
 const path = require('path');
 const { install, Browser } = require('@puppeteer/browsers');
 
-describe('ChromeDriver Network Conditions Regression', function() {
-  this.timeout(120000); // Increased timeout for download
+describe('DESCRIBE THE ISSUE', function() {
   let driver;
 
   before(async function() {
@@ -66,6 +65,9 @@ describe('ChromeDriver Network Conditions Regression', function() {
     await driver.quit();
   });
 
+  /**
+  * This test is intended to verify the setup is correct.
+  */
   it('should be able to navigate to google.com', async function() {
     await driver.get('https://www.google.com');
     const title = await driver.getTitle();
