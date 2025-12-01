@@ -17,17 +17,41 @@
 const { Builder, By, until } = require('selenium-webdriver');
 const { expect } = require('chai');
 const chrome = require('selenium-webdriver/chrome');
+const fs = require('fs');
+const path = require('path');
+const { install, Browser } = require('@puppeteer/browsers');
 
 describe('ChromeDriver Network Conditions Regression', function() {
-  this.timeout(30000);
+  this.timeout(120000); // Increased timeout for download
   let driver;
 
   before(async function() {
+    const buildId = fs.readFileSync('.browser', 'utf8').trim();
+    const cacheDir = path.resolve(__dirname, '.cache');
+
+    console.log(`Installing Chrome and ChromeDriver version ${buildId}...`);
+
+    const chromeBuild = await install({
+      browser: Browser.CHROME,
+      buildId: buildId,
+      cacheDir: cacheDir
+    });
+
+    const chromedriverBuild = await install({
+      browser: Browser.CHROMEDRIVER,
+      buildId: buildId,
+      cacheDir: cacheDir
+    });
+
+    console.log(`Chrome installed at: ${chromeBuild.executablePath}`);
+    console.log(`ChromeDriver installed at: ${chromedriverBuild.executablePath}`);
+
     let options = new chrome.Options();
     options.addArguments('--headless');
     options.addArguments('--no-sandbox');
+    options.setBinaryPath(chromeBuild.executablePath);
 
-    let service = new chrome.ServiceBuilder()
+    let service = new chrome.ServiceBuilder(chromedriverBuild.executablePath)
         .loggingTo('chromedriver.log')
         .enableVerboseLogging();
 
