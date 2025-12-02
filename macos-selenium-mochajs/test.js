@@ -15,7 +15,7 @@
  */
 
 const { Builder } = require('selenium-webdriver');
-const { expect } = require('chai');
+const { expect } = require('expect');
 const chrome = require('selenium-webdriver/chrome');
 const fs = require('fs');
 const path = require('path');
@@ -119,7 +119,7 @@ describe('Selenium chromedriver', function () {
   it('should be able to navigate to google.com', async function () {
     await driver.get('https://www.google.com');
     const title = await driver.getTitle();
-    expect(title).to.equal('Google');
+    expect(title).toBe('Google');
   });
 
   it('ISSUE REPRODUCTION', async function () {

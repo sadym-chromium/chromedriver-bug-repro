@@ -12,6 +12,7 @@
   "license": "Apache-2.0",
   "dependencies": {
     "chai": "^4.3.7",
+    "expect": "^30.2.0",
     "mocha": "^10.2.0",
     "selenium-webdriver": "^4.22.0",
     "winston": "^3.18.3"
