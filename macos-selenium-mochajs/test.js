@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-const { Builder } = require('selenium-webdriver');
+const { Builder, By } = require('selenium-webdriver');
 const { expect } = require('expect');
 const chrome = require('selenium-webdriver/chrome');
 const fs = require('fs');
@@ -122,7 +122,33 @@ describe('Selenium chromedriver', function () {
     expect(title).toBe('Google');
   });
 
-  it('ISSUE REPRODUCTION', async function () {
-    // Add test reproducing the issue here.
+  it('should support pointer button value of 5 for pen eraser', async function () {
+    // This test reproduces the bug described in https://b.corp.google.com/issues/42323172.
+    // The bug is that ChromeDriver does not support a pointer button value of 5, which is
+    // reserved for the pen eraser button according to the W3C Pointer Events specification:
+    // https://www.w3.org/TR/pointerevents/#the-button-property
+    //
+    // The test performs a pointer down action with a button value of 5.
+    // If the bug is present, ChromeDriver will throw an "invalid argument" error because
+    // it currently only accepts button values between 0 and 4.
+    //
+    // Therefore, this test is expected to FAIL if the bug exists. A successful run of
+    // this test indicates that the bug has been fixed.
+
+    // Navigate to a simple page to perform the action on.
+    await driver.get('data:text/html,<html><body></body></html>');
+
+    // Get a reference to the body element.
+    const body = await driver.findElement(By.css('body'));
+
+    // Create a pointer action sequence.
+    const actions = driver.actions();
+    // The selenium-webdriver API does not provide a way to create a 'pen' pointer.
+    // As a workaround, we get the 'mouse' pointer and change its type to 'pen'.
+    actions.mouse_.pointerType_ = 'pen';
+
+    // The test expects that no error is thrown.
+    // If the bug is present, the following call will fail with an "invalid argument" error.
+    await actions.move({x: 10, y: 10, origin: body}).press(5).perform();
   });
 });
