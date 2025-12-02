@@ -122,7 +122,45 @@ describe('Selenium chromedriver', function () {
     expect(title).toBe('Google');
   });
 
-  it('ISSUE REPRODUCTION', async function () {
-    // Add test reproducing the issue here.
+  /**
+   * This test reproduces bug 42322459.
+   *
+   * The bug occurs when trying to find an element in a new window after the
+   * page in the new window redefines `window.Symbol`. The `find_element`
+   * command fails with an `InvalidArgumentException` and the message
+   * "invalid argument: Unsupported locator strategy: null".
+   *
+   * This test is expected to fail with this error, thus confirming the
+   * presence of the bug. The assertion checks for the element to be found,
+   * which is the correct behavior.
+   */
+  it('reproduces bug 42322459', async function () {
+    // Get the absolute path to the index.html file.
+    const indexPath = path.resolve(__dirname, 'index.html');
+
+    // 1. Navigate to the local index.html file.
+    await driver.get(`file://${indexPath}`);
+
+    // 2. Click the button to open new_window.html in a new window.
+    await driver.findElement({ id: 'openWindowBtn' }).click();
+
+    // 3. Switch to the new window.
+    const windows = await driver.getAllWindowHandles();
+    await driver.switchTo().window(windows[1]);
+
+    // 4. Wait for the new window to load. A long sleep is used in the bug
+    //    report, so we use it here as well.
+    await driver.sleep(5000);
+
+    // 5. Try to find an element by class name.
+    //    This is where the error is expected to happen.
+    const elements = await driver.findElements({ className: 'header_area' });
+
+    // The WebDriver spec says that `findElements` should return an empty
+    // list if no elements are found. In the presence of the bug, it throws
+    // an exception.
+    // The assertion below checks for the correct behavior (finding one
+    // element). This will fail if the bug is present.
+    expect(elements.length).toBe(1);
   });
 });

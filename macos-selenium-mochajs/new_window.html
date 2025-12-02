@@ -1,0 +1,16 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>New Window</title>
+</head>
+<body>
+  <div class="header_area">
+    <h1>New Window</h1>
+  </div>
+
+  <script>
+    // Redefine window.Symbol to trigger the bug
+    window.Symbol = undefined;
+  </script>
+</body>
+</html>
