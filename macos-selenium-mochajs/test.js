@@ -43,19 +43,20 @@ describe('Selenium chromedriver', function () {
     this.timeout(5 * 60 * 1000);
     /**
      * By default, the test uses the latest Chrome version. Replace with the
-     * specific Chromium version if needed, e.g. "144.0.7553.0".
+     * specific Chromium version if needed, e.g. "144.0.7553.0" or use
+     * environment variable like `BROWSER_VERSION=142.0.7444.175`
      */
-    const BROWSER_VERSION = await resolveBuildId(
-      Browser.CHROME,
-      detectBrowserPlatform(),
-      ChromeReleaseChannel.CANARY,
-    );
+    const BROWSER_VERSION =
+      process.env['BROWSER_VERSION'] ??
+      (await resolveBuildId(
+        Browser.CHROME,
+        detectBrowserPlatform(),
+        ChromeReleaseChannel.CANARY,
+      ));
 
     const cacheDir = path.resolve(__dirname, '.cache');
 
-    logger.info(
-      `Installing Chrome and ChromeDriver version ${BROWSER_VERSION}...`,
-    );
+    logger.debug(`Chrome version: ${BROWSER_VERSION}`);
 
     const chromeBuild = await install({
       browser: Browser.CHROME,
@@ -69,18 +70,27 @@ describe('Selenium chromedriver', function () {
       cacheDir: cacheDir,
     });
 
-    logger.info(`Chrome installed at: ${chromeBuild.executablePath}`);
-    logger.info(
+    logger.debug(`Chrome installed at: ${chromeBuild.executablePath}`);
+    logger.debug(
       `ChromeDriver installed at: ${chromedriverBuild.executablePath}`,
     );
 
-    let options = new chrome.Options();
+    const options = new chrome.Options();
     options.addArguments('--headless');
     options.addArguments('--no-sandbox');
     options.setBinaryPath(chromeBuild.executablePath);
 
-    let service = new chrome.ServiceBuilder(chromedriverBuild.executablePath)
-      .loggingTo('chromedriver.log')
+    const logDir = path.join(__dirname, 'logs');
+    if (!fs.existsSync(logDir)) {
+      fs.mkdirSync(logDir);
+    }
+    const logFile = path.join(
+      logDir,
+      `chromedriver-${new Date().toISOString()}.log`,
+    );
+
+    const service = new chrome.ServiceBuilder(chromedriverBuild.executablePath)
+      .loggingTo(logFile)
       .enableVerboseLogging();
 
     driver = await new Builder()
