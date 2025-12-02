@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-const { Builder, By, until } = require('selenium-webdriver');
+const { Builder } = require('selenium-webdriver');
 const { expect } = require('chai');
 const chrome = require('selenium-webdriver/chrome');
 const fs = require('fs');
@@ -35,7 +35,12 @@ const logger = winston.createLogger({
 });
 
 describe('Selenium chromedriver', function () {
+  // The deafult timeout of 2s is not enough for selenium tests.
+  this.timeout(60 * 1000);
+
   let driver;
+  let chromedriverBuild;
+  let chromeBuild;
 
   before(async function () {
     // The chrome and chromedriver installation can take some time. Give 5
@@ -58,13 +63,13 @@ describe('Selenium chromedriver', function () {
 
     logger.debug(`Chrome version: ${BROWSER_VERSION}`);
 
-    const chromeBuild = await install({
+    chromeBuild = await install({
       browser: Browser.CHROME,
       buildId: BROWSER_VERSION,
       cacheDir: cacheDir,
     });
 
-    const chromedriverBuild = await install({
+    chromedriverBuild = await install({
       browser: Browser.CHROMEDRIVER,
       buildId: BROWSER_VERSION,
       cacheDir: cacheDir,
@@ -74,23 +79,27 @@ describe('Selenium chromedriver', function () {
     logger.debug(
       `ChromeDriver installed at: ${chromedriverBuild.executablePath}`,
     );
+  });
+
+  beforeEach(async function () {
+    logger.debug(`Launching Chrome at ${chromeBuild.executablePath}`);
 
     const options = new chrome.Options();
     options.addArguments('--headless');
     options.addArguments('--no-sandbox');
     options.setBinaryPath(chromeBuild.executablePath);
 
-    const logDir = path.join(__dirname, 'logs');
-    if (!fs.existsSync(logDir)) {
-      fs.mkdirSync(logDir);
+    const chromedriverLogDir = path.join(__dirname, 'logs');
+    if (!fs.existsSync(chromedriverLogDir)) {
+      fs.mkdirSync(chromedriverLogDir);
     }
-    const logFile = path.join(
-      logDir,
+    const chromedriverLogFile = path.join(
+      chromedriverLogDir,
       `chromedriver-${new Date().toISOString()}.log`,
     );
 
     const service = new chrome.ServiceBuilder(chromedriverBuild.executablePath)
-      .loggingTo(logFile)
+      .loggingTo(chromedriverLogFile)
       .enableVerboseLogging();
 
     driver = await new Builder()
@@ -100,7 +109,7 @@ describe('Selenium chromedriver', function () {
       .build();
   });
 
-  after(async function () {
+  afterEach(async function () {
     await driver.quit();
   });
 
