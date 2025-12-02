@@ -81,9 +81,16 @@ describe('Selenium chromedriver', function () {
     );
   });
 
-  beforeEach(async function () {
-    logger.debug(`Launching Chrome at ${chromeBuild.executablePath}`);
+  afterEach(async function () {
+    if (driver) {
+      await driver.quit();
+    }
+  });
 
+  /**
+   * This test is intended to verify the setup is correct.
+   */
+  it('should be able to navigate to google.com', async function () {
     const options = new chrome.Options();
     options.addArguments('--headless');
     options.addArguments('--no-sandbox');
@@ -95,7 +102,7 @@ describe('Selenium chromedriver', function () {
     }
     const chromedriverLogFile = path.join(
       chromedriverLogDir,
-      `chromedriver-${new Date().toISOString()}.log`,
+      `chromedriver-${new Date().toISOString()}.log`
     );
 
     const service = new chrome.ServiceBuilder(chromedriverBuild.executablePath)
@@ -107,22 +114,65 @@ describe('Selenium chromedriver', function () {
       .setChromeOptions(options)
       .setChromeService(service)
       .build();
-  });
 
-  afterEach(async function () {
-    await driver.quit();
-  });
-
-  /**
-   * This test is intended to verify the setup is correct.
-   */
-  it('should be able to navigate to google.com', async function () {
     await driver.get('https://www.google.com');
     const title = await driver.getTitle();
     expect(title).toBe('Google');
   });
 
-  it('ISSUE REPRODUCTION', async function () {
-    // Add test reproducing the issue here.
+  it('navigator.webdriver should be true even with --remote-debugging-port and enable-automation excluded', async function () {
+    // This test reproduces https://crbug.com/chromedriver/4107.
+    // The bug causes `navigator.webdriver` to be false when the
+    // `enable-automation` switch is excluded and a remote debugging port is
+    // set.
+    //
+    // The test configures the ChromeDriver to launch Chrome with the exact
+    // capabilities described in the bug report.
+    //
+    // 1. Exclude the 'enable-automation' switch.
+    // 2. Set a non-zero remote debugging port.
+    //
+    // It then navigates to a blank page and executes a script to get the value
+    // of `navigator.webdriver`.
+    //
+    // The WebDriver specification states that `navigator.webdriver` should be
+    // `true` when the browser is under control of a WebDriver. In this case,
+    // even though 'enable-automation' is excluded, ChromeDriver should ensure
+    // that `navigator.webdriver` remains `true`. The bug causes this to be
+    // `false`.
+    //
+    // Therefore, this test asserts that the value is `true`, and it is
+    // expected to fail if the bug is present.
+    const options = new chrome.Options();
+    options.addArguments('--headless');
+    options.addArguments('--no-sandbox');
+    options.addArguments('--remote-debugging-port=9222');
+    options.excludeSwitches('enable-automation');
+    options.setBinaryPath(chromeBuild.executablePath);
+
+    const chromedriverLogDir = path.join(__dirname, 'logs');
+    if (!fs.existsSync(chromedriverLogDir)) {
+      fs.mkdirSync(chromedriverLogDir);
+    }
+    const chromedriverLogFile = path.join(
+      chromedriverLogDir,
+      `chromedriver-${new Date().toISOString()}.log`
+    );
+
+    const service = new chrome.ServiceBuilder(chromedriverBuild.executablePath)
+      .loggingTo(chromedriverLogFile)
+      .enableVerboseLogging();
+
+    driver = await new Builder()
+      .forBrowser('chrome')
+      .setChromeOptions(options)
+      .setChromeService(service)
+      .build();
+
+    await driver.get('about:blank');
+    const navigatorWebdriver = await driver.executeScript(
+      'return navigator.webdriver'
+    );
+    expect(navigatorWebdriver).toBe(true);
   });
 });
