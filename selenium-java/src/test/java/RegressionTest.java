@@ -65,6 +65,16 @@ public class RegressionTest {
 
   @Test
   public void ISSUE_REPRODUCTION() {
-    // Add test reproducing the issue here.
+    // This test is designed to fail if the bug is present.
+    // The bug is that ChromeDriver uses --remote-debugging-port by default, which is insecure.
+    // The fix is to use --remote-debugging-pipe by default.
+    // When --remote-debugging-port is used, the debuggerAddress capability is present.
+    // When --remote-debugging-pipe is used, the debuggerAddress capability is not present.
+    // Therefore, this test should fail if the bug is present, and pass if the bug is fixed.
+    org.openqa.selenium.Capabilities capabilities = ((ChromeDriver) driver).getCapabilities();
+    System.out.println(capabilities);
+    java.util.Map<String, Object> chromeOptions =
+        (java.util.Map<String, Object>) capabilities.getCapability("goog:chromeOptions");
+    assertEquals(null, chromeOptions.get("debuggerAddress"));
   }
 }
