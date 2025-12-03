@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>Bug 42321530</title>
+<style>
+  .container {
+    height: 150px;
+    overflow: hidden;
+    border: 1px solid black;
+  }
+  table {
+    border-collapse: collapse;
+  }
+  td, th {
+    border: 1px solid #dddddd;
+    text-align: left;
+    padding: 8px;
+  }
+</style>
+</head>
+<body>
+
+<h2>Table with overflow:hidden parent</h2>
+
+<div class="container">
+  <table>
+    <tbody>
+      <tr><td>1</td></tr>
+      <tr><td>2</td></tr>
+      <tr><td>3</td></tr>
+      <tr><td>4</td></tr>
+      <tr><td>5</td></tr>
+      <tr><td>6</td></tr>
+      <tr><td>7</td></tr>
+      <tr><td>8</td></tr>
+      <tr><td>9</td></tr>
+      <tr><td>10</td></tr>
+      <tr><td>11</td></tr>
+      <tr><td>12</td></tr>
+      <tr><td>13</td></tr>
+      <tr><td>14</td></tr>
+      <tr><td>15</td></tr>
+      <tr><td>16</td></tr>
+      <tr><td>17</td></tr>
+      <tr><td>18</td></tr>
+      <tr><td>19</td></tr>
+      <tr><td>20</td></tr>
+    </tbody>
+  </table>
+</div>
+
+</body>
+</html>

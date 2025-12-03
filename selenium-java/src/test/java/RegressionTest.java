@@ -64,7 +64,26 @@ public class RegressionTest {
   }
 
   @Test
-  public void ISSUE_REPRODUCTION() {
-    // Add test reproducing the issue here.
+  public void issue42321530_getTextFromTableDoesNotReturnEmptyText() {
+    // This test reproduces https://crbug.com/42321530
+    // The issue is that getText() returns an empty string for an element
+    // that is not fully visible due to an `overflow:hidden` on a parent element.
+    // The 15th row is partially hidden, and getText() on its cell returns an empty string.
+    // The expected behavior is that getText() should return the text content of the element
+    // regardless of its visibility.
+    java.io.File htmlFile = new java.io.File("bug_42321530.html");
+    driver.get("file://" + htmlFile.getAbsolutePath());
+
+    org.openqa.selenium.WebElement baseTable = driver.findElement(org.openqa.selenium.By.tagName("tbody"));
+    java.util.List<org.openqa.selenium.WebElement> rows = baseTable.findElements(org.openqa.selenium.By.tagName("tr"));
+    java.util.List<String> texts = new java.util.ArrayList<>();
+    for (org.openqa.selenium.WebElement row : rows) {
+      java.util.List<org.openqa.selenium.WebElement> cells = row.findElements(org.openqa.selenium.By.xpath(".//td"));
+      org.openqa.selenium.WebElement element = cells.get(0);
+      String text = element.getText();
+      texts.add(text);
+    }
+    // The 15th element is the first that is not fully visible and returns empty string.
+    assertEquals("15", texts.get(14));
   }
 }
