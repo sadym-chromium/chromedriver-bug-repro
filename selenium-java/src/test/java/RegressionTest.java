@@ -64,7 +64,15 @@ public class RegressionTest {
   }
 
   @Test
-  public void ISSUE_REPRODUCTION() {
-    // Add test reproducing the issue here.
+  public void testDateInputNormalization() {
+    // This test reproduces https://crbug.com/42322342
+    // It is expected to fail.
+    // The bug is that sendKeys to a date input does not normalize the date format.
+    // The W3C WebDriver spec says that for non-typeable inputs like 'date',
+    // the value should be set directly.
+    driver.get("data:text/html,<input type=date>");
+    driver.findElement(org.openqa.selenium.By.tagName("input")).sendKeys("2025-12-03");
+    String value = driver.findElement(org.openqa.selenium.By.tagName("input")).getAttribute("value");
+    assertEquals("2025-12-03", value);
   }
 }
