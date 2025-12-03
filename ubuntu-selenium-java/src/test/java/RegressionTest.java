@@ -15,14 +15,17 @@
  */
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
 
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.openqa.selenium.Capabilities;
 import org.openqa.selenium.WebDriver;
 import org.openqa.selenium.chrome.ChromeDriver;
 import org.openqa.selenium.chrome.ChromeDriverService;
 import org.openqa.selenium.chrome.ChromeOptions;
+import org.openqa.selenium.remote.RemoteWebDriver;
 
 public class RegressionTest {
 
@@ -64,7 +67,23 @@ public class RegressionTest {
   }
 
   @Test
-  public void ISSUE_REPRODUCTION() {
-    // Add test reproducing the issue here.
+  public void shouldReturnW3CCompliantCaps() {
+    // The bug report (crbug.com/42323175) describes an issue where ChromeDriver returns
+    // non-W3C compliant capabilities 'networkConnectionEnabled' and 'chrome' without the 'goog:' prefix.
+
+    // We cast to RemoteWebDriver to access capabilities
+    Capabilities caps = ((RemoteWebDriver) driver).getCapabilities();
+
+    // Check for 'networkConnectionEnabled'
+    // Expected: Should be null (or prefixed with goog:)
+    // If bug exists: It returns a value (e.g., false)
+    Object network = caps.getCapability("networkConnectionEnabled");
+    assertNull(network, "Non-W3C capability 'networkConnectionEnabled' should not be present. It should be prefixed with 'goog:'.");
+
+    // Check for 'chrome'
+    // Expected: Should be null (or prefixed with goog:)
+    // If bug exists: It returns a map/object
+    Object chrome = caps.getCapability("chrome");
+    assertNull(chrome, "Non-W3C capability 'chrome' should not be present. It should be prefixed with 'goog:'.");
   }
 }
