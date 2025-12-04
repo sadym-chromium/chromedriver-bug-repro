@@ -1,0 +1,21 @@
+
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Slot Test</title>
+</head>
+<body>
+    <custom-element></custom-element>
+
+    <script>
+        class CustomElement extends HTMLElement {
+            constructor() {
+                super();
+                const shadowRoot = this.attachShadow({ mode: 'open' });
+                shadowRoot.innerHTML = `<slot>Default Slot Content</slot>`;
+            }
+        }
+        customElements.define('custom-element', CustomElement);
+    </script>
+</body>
+</html>
