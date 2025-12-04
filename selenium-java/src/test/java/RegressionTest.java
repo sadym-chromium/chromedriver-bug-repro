@@ -64,7 +64,25 @@ public class RegressionTest {
   }
 
   @Test
-  public void ISSUE_REPRODUCTION() {
-    // Add test reproducing the issue here.
+  public void issue42323069_shouldThrowWebDriverExceptionWhenSendingNonEnglishKey() {
+    // This test reproduces crbug.com/42323069, where a WebDriverException
+    // is thrown when attempting to send keys with a non-English keyboard layout.
+    // Specifically, the '@' symbol with a German keyboard layout was reported
+    // to cause this issue.
+
+    // Expected behavior: A WebDriverException should be thrown.
+    // If the exception is NOT thrown, it means the bug is fixed, and the test should fail.
+    try {
+      driver.get("https://www.google.com");
+      org.openqa.selenium.WebElement searchBox = driver.findElement(org.openqa.selenium.By.name("q"));
+      searchBox.sendKeys("@");
+      // If no exception is thrown, the bug is fixed, so fail the test.
+      org.junit.jupiter.api.Assertions.fail("WebDriverException was not thrown, bug 42323069 might be fixed.");
+    } catch (org.openqa.selenium.WebDriverException e) {
+      // Assert that the exception message contains the expected text.
+      String expectedErrorMessage = "unknown error: Cannot construct KeyEvent from non-typeable key";
+      org.junit.jupiter.api.Assertions.assertTrue(e.getMessage().contains(expectedErrorMessage),
+          "Expected WebDriverException with message containing: '" + expectedErrorMessage + "', but got: " + e.getMessage());
+    }
   }
 }
