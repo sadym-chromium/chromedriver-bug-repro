@@ -15,11 +15,18 @@
  */
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.fail;
 
+import java.io.File;
+import java.nio.file.Paths;
+import java.util.UUID;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.openqa.selenium.By;
+import org.openqa.selenium.StaleElementReferenceException;
 import org.openqa.selenium.WebDriver;
+import org.openqa.selenium.WebElement;
 import org.openqa.selenium.chrome.ChromeDriver;
 import org.openqa.selenium.chrome.ChromeDriverService;
 import org.openqa.selenium.chrome.ChromeOptions;
@@ -56,15 +63,39 @@ public class RegressionTest {
   }
 
   @Test
-  public void verifySetup_shouldBeAbleToNavigateToGoogleCom() {
-    // Navigate to a URL
-    driver.get("https://www.google.com");
-    // Assert that the navigation was successful
-    assertEquals("Google", driver.getTitle());
-  }
+  public void reproduceStaleElementException() {
+    // This test reproduces a bug where a StaleElementReferenceException is thrown
+    // because the click() command on a submit button returns before the page has finished
+    // navigating. This creates a race condition where the subsequent findElement call
+    // may find the element on the old page, which becomes stale after the navigation
+    // completes.
 
-  @Test
-  public void ISSUE_REPRODUCTION() {
-    // Add test reproducing the issue here.
+    File formHtml = Paths.get("src", "test", "resources", "form.html").toFile();
+    driver.get(formHtml.toURI().toString());
+
+    for (int i = 0; i < 10; i++) {
+      try {
+        String uniqueValue = UUID.randomUUID().toString();
+
+        WebElement textInput = driver.findElement(By.id("text-input"));
+        textInput.clear();
+        textInput.sendKeys(uniqueValue);
+
+        WebElement submitButton = driver.findElement(By.id("submit-button"));
+        submitButton.click();
+
+        WebElement submittedText = driver.findElement(By.id("submitted-text"));
+        // This assertion is expected to fail if the bug is present.
+        // The click() returns before the page reloads, so we get the element
+        // from the old page, and its text is not the uniqueValue.
+        // When the page does reload, the element becomes stale, and a
+        // StaleElementReferenceException is thrown on the next iteration.
+        assertEquals(uniqueValue, submittedText.getText());
+      } catch (StaleElementReferenceException e) {
+        // If we catch a StaleElementReferenceException, the bug is reproduced.
+        // We can fail the test here.
+        fail("StaleElementReferenceException thrown, bug is reproduced.", e);
+      }
+    }
   }
 }
