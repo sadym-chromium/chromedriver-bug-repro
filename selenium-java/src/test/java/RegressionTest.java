@@ -24,6 +24,12 @@ import org.openqa.selenium.chrome.ChromeDriver;
 import org.openqa.selenium.chrome.ChromeDriverService;
 import org.openqa.selenium.chrome.ChromeOptions;
 
+import org.openqa.selenium.By;
+import org.openqa.selenium.WebElement;
+import org.openqa.selenium.interactions.Action;
+import org.openqa.selenium.interactions.Actions;
+import org.openqa.selenium.Keys;
+
 public class RegressionTest {
 
   private WebDriver driver;
@@ -65,6 +71,39 @@ public class RegressionTest {
 
   @Test
   public void ISSUE_REPRODUCTION() {
-    // Add test reproducing the issue here.
+    /*
+     * This test reproduces the bug reported in crbug.com/42322721.
+     * The bug describes that when using Selenium Actions to type '@' (Shift + 2)
+     * into a textarea or input field, the '@' symbol gets highlighted and erased.
+     *
+     * Reproduction Steps:
+     * 1. Navigate to Google.com
+     * 2. Locate the search input field.
+     * 3. Perform the action sequence: moveToElement, click, keyDown(SHIFT), sendKeys("2"), keyUp(SHIFT).
+     * 4. Verify that the '@' symbol is present in the input field.
+     *
+     * Expected Failure:
+     * If the bug exists, the '@' symbol will be highlighted and erased,
+     * leading to the input field not containing '@'.
+     * The assertion `assertTrue(searchBox.getAttribute("value").contains("@"))`
+     * will fail if the bug is present, thus confirming the bug's existence.
+     */
+    driver.get("https://www.google.com");
+    WebElement searchBox = driver.findElement(By.name("q"));
+
+    Actions builder = new Actions(driver);
+    Action seriesOfActions = builder
+        .moveToElement(searchBox)
+        .click()
+        .keyDown(searchBox, Keys.SHIFT)
+        .sendKeys(searchBox, "2")
+        .keyUp(searchBox, Keys.SHIFT)
+        .build();
+    seriesOfActions.perform();
+
+    // Assert that the search box contains the "@" symbol.
+    // If the bug exists, the "@" symbol will be highlighted and erased,
+    // so this assertion will fail.
+    assertEquals("@", searchBox.getAttribute("value"));
   }
 }
