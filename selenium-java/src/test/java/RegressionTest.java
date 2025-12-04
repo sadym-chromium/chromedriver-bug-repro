@@ -24,6 +24,8 @@ import org.openqa.selenium.chrome.ChromeDriver;
 import org.openqa.selenium.chrome.ChromeDriverService;
 import org.openqa.selenium.chrome.ChromeOptions;
 
+import java.net.URL;
+
 public class RegressionTest {
 
   private WebDriver driver;
@@ -65,6 +67,15 @@ public class RegressionTest {
 
   @Test
   public void ISSUE_REPRODUCTION() {
-    // Add test reproducing the issue here.
+    // This test reproduces the issue reported in crbug.com/375343406.
+    // The bug describes that Selenium has problems recognizing or interacting with elements
+    // and waiting for pages and iframes after the release of Chrome 130.
+    // This test navigates to a page with an iframe and tries to find an element
+    // inside the iframe. It is expected to fail if the bug is present.
+    URL url = getClass().getClassLoader().getResource("main.html");
+    driver.get(url.toString());
+    driver.switchTo().frame("iframeResult");
+    String h1Text = driver.findElement(org.openqa.selenium.By.tagName("h1")).getText();
+    assertEquals("The iframe element", h1Text);
   }
 }

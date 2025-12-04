@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html>
+<body>
+
+<h2>HTML Iframes</h2>
+<p>You can use the height and width attributes to specify the size of the iframe:</p>
+
+<div id="iframe-container"></div>
+
+<script>
+  setTimeout(function() {
+    var iframe = document.createElement('iframe');
+    iframe.src = 'iframe.html';
+    iframe.name = 'iframeResult';
+    iframe.height = '200';
+    iframe.width = '300';
+    iframe.title = 'Iframe Example';
+    document.getElementById('iframe-container').appendChild(iframe);
+  }, 500);
+</script>
+
+</body>
+</html>
