@@ -56,11 +56,42 @@ public class RegressionTest {
   }
 
   @Test
-  public void verifySetup_shouldBeAbleToNavigateToGoogleCom() {
-    // Navigate to a URL
-    driver.get("https://www.google.com");
-    // Assert that the navigation was successful
-    assertEquals("Google", driver.getTitle());
+  public void newSessionShouldReturnDefaultUserAgent() {
+    // This test reproduces https://crbug.com/chromedriver/4719
+    // It is expected to fail if the bug is present.
+    // The bug is that the userAgent in the session capabilities is the
+    // one from mobile emulation, not the default one.
+    // The webdriver spec https://github.com/w3c/webdriver/pull/1790
+    // says it should be the default one.
+
+    ChromeOptions options = new ChromeOptions();
+    options.addArguments("--headless");
+    options.addArguments("--no-sandbox");
+    options.setBrowserVersion("stable");
+
+    // Enable mobile emulation
+    java.util.Map<String, String> mobileEmulation = new java.util.HashMap<>();
+    mobileEmulation.put("userAgent", "Mozilla/5.0 (Linux; Android 4.2.1; en-us; Nexus 5 Build/JOP40D) AppleWebKit/535.19 (KHTML, like Gecko) Chrome/18.0.1025.166 Mobile Safari/535.19");
+    options.setExperimentalOption("mobileEmulation", mobileEmulation);
+
+    ChromeDriverService service =
+        new ChromeDriverService.Builder()
+            .withLogFile(new java.io.File("chromedriver.log"))
+            .withVerbose(true)
+            .build();
+
+    driver = new ChromeDriver(service, options);
+
+    // The user agent from the session capabilities should be the default one
+    String sessionUserAgent = (String) ((ChromeDriver) driver).getCapabilities().getCapability("userAgent");
+    
+    // The user agent from the navigator should be the emulated one
+    String navigatorUserAgent = (String) ((ChromeDriver) driver).executeScript("return navigator.userAgent");
+
+    // Assert that the session user agent is not the emulated one.
+    // This is expected to fail if the bug is present.
+    org.junit.jupiter.api.Assertions.assertNotNull(sessionUserAgent);
+    org.junit.jupiter.api.Assertions.assertNotEquals(sessionUserAgent, navigatorUserAgent);
   }
 
   @Test
