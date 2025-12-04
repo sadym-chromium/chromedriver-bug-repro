@@ -21,8 +21,9 @@ jobs:
 
     - name: Run tests
       working-directory: ./selenium-python
-      run: pytest test.py
+      run: pytest -v test.py
 
     - name: Dump log
       if: always()
+      working-directory: ./selenium-python
       run: cat chromedriver.log
