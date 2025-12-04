@@ -64,7 +64,19 @@ public class RegressionTest {
   }
 
   @Test
-  public void ISSUE_REPRODUCTION() {
-    // Add test reproducing the issue here.
+  public void backAndForwardShouldNotBreakScreenshot() {
+    // This test reproduces https://issuetracker.google.com/issues/42323224
+    // Taking a screenshot after back() and forward() actions fails due to an
+    // unhandled inspector error. This is not reproducible on macOS.
+    driver.get("http://httpbin.org/anything");
+    driver.get("http://httpbin.org/anything?test1=123");
+    driver.manage().window().fullscreen();
+    ((ChromeDriver) driver).getScreenshotAs(org.openqa.selenium.OutputType.FILE); // ok
+    driver.navigate().back();
+    // The following screenshot is expected to fail if the bug is present
+    ((ChromeDriver) driver).getScreenshotAs(org.openqa.selenium.OutputType.FILE); // error
+    driver.navigate().forward();
+    // The following screenshot is also expected to fail if the bug is present
+    ((ChromeDriver) driver).getScreenshotAs(org.openqa.selenium.OutputType.FILE); // error
   }
 }
