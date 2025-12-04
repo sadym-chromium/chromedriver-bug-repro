@@ -16,9 +16,12 @@
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
+import java.io.File;
+import java.time.Duration;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.openqa.selenium.By;
 import org.openqa.selenium.WebDriver;
 import org.openqa.selenium.chrome.ChromeDriver;
 import org.openqa.selenium.chrome.ChromeDriverService;
@@ -56,15 +59,31 @@ public class RegressionTest {
   }
 
   @Test
-  public void verifySetup_shouldBeAbleToNavigateToGoogleCom() {
-    // Navigate to a URL
-    driver.get("https://www.google.com");
-    // Assert that the navigation was successful
-    assertEquals("Google", driver.getTitle());
-  }
+  public void reproducesBug42323495() throws InterruptedException {
+    // The bug report mentions that Chrome/ChromeDriver hangs when a tab that loads an iFrame is open, while using BiDi.
+    // This test reproduces the issue by:
+    // 1. Opening a page with a link to a new tab.
+    // 2. Clicking the link to open the new tab.
+    // 3. The new tab contains an iframe.
+    // 4. The test then tries to switch to the new tab and find an element in the iframe.
+    // The test is expected to hang on the findElement call.
+    driver.get("file://" + new File("src/test/resources/html/window_one.html").getAbsolutePath());
 
-  @Test
-  public void ISSUE_REPRODUCTION() {
-    // Add test reproducing the issue here.
+    String originalWindow = driver.getWindowHandle();
+    assertEquals(driver.getWindowHandles().size(), 1);
+
+    driver.findElement(By.name("windowTwo")).click();
+    Thread.sleep(Duration.ofSeconds(1));
+    assertEquals(driver.getWindowHandles().size(), 2);
+
+    for (String windowHandle : driver.getWindowHandles()) {
+      if (!originalWindow.contentEquals(windowHandle)) {
+        driver.switchTo().window(windowHandle);
+        break;
+      }
+    }
+
+    driver.switchTo().frame("the-iframe");
+    driver.findElement(By.id("iframe-header"));
   }
 }
