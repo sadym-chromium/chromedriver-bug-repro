@@ -21,4 +21,10 @@
     <PackageReference Include="Selenium.WebDriver" Version="4.22.0" />
   </ItemGroup>
 
+  <ItemGroup>
+    <Content Include="test.html">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+  </ItemGroup>
+
 </Project>

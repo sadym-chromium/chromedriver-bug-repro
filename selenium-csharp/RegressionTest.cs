@@ -49,4 +49,40 @@ public class Tests
             driver.Quit();
         }
     }
+
+    [Test]
+    public void SpecialCharactersDisappear()
+    {
+        var options = new ChromeOptions();
+        options.AddArgument("--headless");
+        options.AddArgument("--no-sandbox");
+        // By default, the test uses the latest stable Chrome version.
+        // Replace the "stable" with the specific browser version if needed,
+        // e.g. 'canary', '115' or '144.0.7534.0' for example.
+        options.BrowserVersion = "stable";
+
+        var service = ChromeDriverService.CreateDefaultService();
+        service.LogPath = "d:\\chromedriver.log";
+        service.EnableVerboseLogging = true;
+
+        IWebDriver driver = new ChromeDriver(service, options);
+
+        try
+        {
+            var testHtml = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "test.html");
+            driver.Navigate().GoToUrl("file://" + testHtml);
+            var input = driver.FindElement(By.Id("testInput"));
+            input.SendKeys("1^1");
+            var value = input.GetAttribute("value");
+            // This assertion is expected to fail if the bug is present.
+            // When using a non-US keyboard layout on Windows, the '^' character
+            // might not be correctly typed by ChromeDriver, resulting in the
+            // actual value being "11" instead of "1^1".
+            Assert.That(value, Is.EqualTo("1^1"));
+        }
+        finally
+        {
+            driver.Quit();
+        }
+    }
 }
