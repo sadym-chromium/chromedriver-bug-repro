@@ -39,13 +39,14 @@ public class RegressionTest {
     // e.g. 'canary', '115' or '144.0.7534.0' for example.
     options.setBrowserVersion("stable");
 
-    ChromeDriverService service =
-        new ChromeDriverService.Builder()
-            .withLogFile(new java.io.File("chromedriver.log"))
-            .withVerbose(true)
-            .build();
+    ChromeDriverService service = new ChromeDriverService.Builder()
+        .withLogFile(new java.io.File("chromedriver.log"))
+        .withVerbose(true)
+        .build();
 
     driver = new ChromeDriver(service, options);
+    driver.manage().timeouts().pageLoadTimeout(java.time.Duration.ofSeconds(5));
+    driver.manage().timeouts().implicitlyWait(java.time.Duration.ofSeconds(2));
   }
 
   @AfterEach
@@ -64,7 +65,37 @@ public class RegressionTest {
   }
 
   @Test
-  public void ISSUE_REPRODUCTION() {
-    // Add test reproducing the issue here.
+  public void testAlertInOtherWindowCausesTimeout() throws InterruptedException {
+    // Navigate to a blank page in the initial window
+    driver.get("about:blank");
+    String originalWindowHandle = driver.getWindowHandle();
+
+    // Open a new window and switch to it
+    driver.switchTo().newWindow(org.openqa.selenium.WindowType.TAB);
+    String newWindowHandle = driver.getWindowHandle();
+
+    // In the new window, navigate to a URL that triggers an alert
+    // This will cause an unhandled alert exception if not handled
+    driver.get("data:text/html,<script>alert('Hello from other window!');</script>");
+
+    // Switch back to the original window
+    driver.switchTo().window(originalWindowHandle);
+
+    driver.getTitle();
+    // If we reach here, the bug is NOT reproduced as the driver call did not
+    // timeout.
+    // Now, test the second part of the bug: "Simple alert checking in current
+    // window also does not work."
+    try {
+      driver.switchTo().alert();
+      org.junit.jupiter.api.Assertions.fail(
+          "Expected NoAlertPresentException, but an alert was found or another exception occurred when checking in the current window.");
+    } catch (org.openqa.selenium.NoAlertPresentException e) {
+      System.out.println("Caught NoAlertPresentException as expected, meaning alert checking works correctly.");
+      // The bug is NOT reproduced if NoAlertPresentException is thrown.
+    } catch (Exception e) {
+      System.out.println("Caught unexpected exception during alert checking: " + e.getMessage());
+      org.junit.jupiter.api.Assertions.fail("Caught unexpected exception during alert checking: " + e.getMessage());
+    }
   }
 }
