@@ -45,14 +45,47 @@ def driver():
 
 
 @pytest.mark.timeout(TIMEOUT)
-def test_should_be_able_to_navigate_to_google_com(driver):
-    """This test is intended to verify the setup is correct."""
-    driver.get("https://www.google.com")
-    logging.info(driver.title)
-    assert driver.title == "Google"
+def test_w3c_is_default_session(driver):
+    """
+    This test verifies that a W3C compliant session is created by default.
+    It checks for the presence of a W3C-specific capability.
+    """
+    logging.info(f"Default session capabilities: {driver.capabilities}")
+    assert 'goog:chromeOptions' in driver.capabilities, "The default session should be W3C compliant."
 
 
 @pytest.mark.timeout(TIMEOUT)
-def test_issue_reproduction(driver):
-    """Add test reproducing the issue here."""
-    pass
+def test_legacy_protocol_is_still_supported():
+    """
+    Bug: Legacy non-W3C compliant mode is still supported.
+    This test attempts to create a legacy protocol session.
+    It is EXPECTED TO FAIL if the bug is present, because a non-W3C
+    session will be created successfully.
+    """
+    options = Options()
+    options.add_argument("--headless")
+    options.add_argument("--no-sandbox")
+    
+    # Set the 'w3c' capability to False to request a legacy session.
+    options.set_capability("w3c", False)
+
+    try:
+        legacy_driver = webdriver.Chrome(options=options)
+        logging.info(f"Legacy session capabilities: {legacy_driver.capabilities}")
+        
+        # If a driver is created, the bug is present.
+        # We verify it's a non-W3C session by checking the absence of a W3C-specific capability.
+        is_w3c = 'goog:chromeOptions' in legacy_driver.capabilities
+        
+        legacy_driver.quit()
+        
+        if not is_w3c:
+            pytest.fail("BUG REPRODUCED: A legacy non-W3C session was successfully created.")
+        else:
+            pytest.fail("A W3C session was created even when legacy mode was requested.")
+
+    except Exception as e:
+        # If session creation fails, it means legacy protocol is not supported,
+        # which would mean the bug is fixed. This test would then pass.
+        logging.info(f"Session creation with w3c:False failed, which is the desired behavior. Exception: {e}")
+        assert "session not created" in str(e)
