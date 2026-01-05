@@ -15,10 +15,15 @@
  */
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.io.File;
+import java.util.Set;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.openqa.selenium.By;
 import org.openqa.selenium.WebDriver;
 import org.openqa.selenium.chrome.ChromeDriver;
 import org.openqa.selenium.chrome.ChromeDriverService;
@@ -64,7 +69,44 @@ public class RegressionTest {
   }
 
   @Test
-  public void ISSUE_REPRODUCTION() {
-    // Add test reproducing the issue here.
+  public void testGetWindowHandlesAndSwitch() {
+    // This test reproduces the issue where ChromeDriver fails to get window handles and switch to new windows.
+    // The bug report mentions that tests related to window handling are failing on Android.
+    // This test attempts to replicate the core of the issue in a Java environment.
+    // It is expected to fail if the bug is present, specifically if the new window handle is not found
+    // or if the driver cannot switch to it.
+    // The assertion `assertNotEquals(originalHandles, newHandles)` is expected to fail if the bug is present.
+    // The WebDriver spec states that GetWindowHandles should return all window handles for the current session.
+    // See: https://www.w3.org/TR/webdriver/#get-window-handles
+
+    // Navigate to a local HTML file that has a link to open a new window.
+    File htmlFile = new File("src/test/resources/open_new_window.html");
+    driver.get("file://" + htmlFile.getAbsolutePath());
+
+    // Get the original window handle.
+    String originalHandle = driver.getWindowHandle();
+    Set<String> originalHandles = driver.getWindowHandles();
+    assertEquals(1, originalHandles.size());
+
+    // Click the link to open a new window.
+    driver.findElement(By.tagName("a")).click();
+
+    // Get the new window handles.
+    Set<String> newHandles = driver.getWindowHandles();
+
+    // The test is expected to fail here if the bug is present.
+    // The number of window handles should be 2, but it might be 1 if the bug is present.
+    assertEquals(2, newHandles.size());
+
+    // The new window handle should be different from the original one.
+    newHandles.removeAll(originalHandles);
+    String newHandle = newHandles.iterator().next();
+    assertNotEquals(originalHandle, newHandle);
+
+    // Switch to the new window.
+    driver.switchTo().window(newHandle);
+
+    // Check if the driver is switched to the new window.
+    assertEquals("Google", driver.getTitle());
   }
 }
