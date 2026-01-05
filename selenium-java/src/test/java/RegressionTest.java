@@ -37,6 +37,7 @@ public class RegressionTest {
   public void setUp() {
     ChromeOptions options = new ChromeOptions();
     options.setExperimentalOption("androidPackage", "com.android.chrome");
+    options.setExperimentalOption("androidKeepAppData", true);
     options.addArguments("--headless");
     options.addArguments("--no-sandbox");
 
