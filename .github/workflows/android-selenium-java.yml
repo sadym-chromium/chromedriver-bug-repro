@@ -1,0 +1,29 @@
+name: Android Selenium Java
+
+on:
+  push:
+    paths:
+      - 'android-selenium-java/**'
+      - '.github/workflows/android-selenium-java.yml'
+  pull_request:
+    paths:
+      - 'android-selenium-java/**'
+      - '.github/workflows/android-selenium-java.yml'
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v3
+    - name: Set up JDK 11
+      uses: actions/setup-java@v3
+      with:
+        java-version: '25'
+        distribution: 'temurin'
+        cache: maven
+    - name: Run tests on Android Emulator
+      uses: reactivecircus/android-emulator-runner@v2
+      with:
+        api-level: 29
+        script: mvn -B test --file android-selenium-java/pom.xml
