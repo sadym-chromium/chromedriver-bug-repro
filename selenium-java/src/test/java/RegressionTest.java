@@ -20,6 +20,8 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.openqa.selenium.WebDriver;
+import org.openqa.selenium.WebElement;
+import org.openqa.selenium.By;
 import org.openqa.selenium.chrome.ChromeDriver;
 import org.openqa.selenium.chrome.ChromeDriverService;
 import org.openqa.selenium.chrome.ChromeOptions;
@@ -64,7 +66,21 @@ public class RegressionTest {
   }
 
   @Test
-  public void ISSUE_REPRODUCTION() {
-    // Add test reproducing the issue here.
+  public void testGetTextFromInvisibleTableCell_bug42321530() {
+    // This test reproduces crbug.com/42321530
+    // The bug occurs when trying to get the text of a table cell that is not
+    // visible in the viewport due to a parent element with "overflow: hidden".
+    // The expected behavior is that ChromeDriver should implicitly scroll the
+    // element into view and return the text. The actual behavior is that it
+    // returns an empty string.
+    // This test loads a local HTML file with a table inside a div with
+    // "overflow: hidden". The 15th cell is out of view. The test then
+    // asserts that the text of the 15th cell is "15".
+    // This assertion is expected to fail.
+    driver.get("file:///usr/local/google/home/sadym/chromedriver-bug-repro/selenium-java/src/test/resources/table_test.html");
+    WebElement baseTable = driver.findElement(By.tagName("tbody"));
+    java.util.List<WebElement> rows = baseTable.findElements(By.tagName("tr"));
+    WebElement cell = rows.get(14).findElement(By.xpath(".//td"));
+    assertEquals("15", cell.getText());
   }
 }
