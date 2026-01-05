@@ -36,6 +36,7 @@ public class RegressionTest {
   @BeforeEach
   public void setUp() {
     ChromeOptions options = new ChromeOptions();
+    options.setExperimentalOption("androidPackage", "com.android.chrome");
     options.addArguments("--headless");
     options.addArguments("--no-sandbox");
 
