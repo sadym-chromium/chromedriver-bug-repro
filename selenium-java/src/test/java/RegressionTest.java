@@ -15,14 +15,21 @@
  */
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.io.File;
+import java.time.Duration;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.openqa.selenium.By;
 import org.openqa.selenium.WebDriver;
+import org.openqa.selenium.WebElement;
 import org.openqa.selenium.chrome.ChromeDriver;
 import org.openqa.selenium.chrome.ChromeDriverService;
 import org.openqa.selenium.chrome.ChromeOptions;
+import org.openqa.selenium.support.ui.ExpectedConditions;
+import org.openqa.selenium.support.ui.WebDriverWait;
 
 public class RegressionTest {
 
@@ -33,15 +40,17 @@ public class RegressionTest {
     ChromeOptions options = new ChromeOptions();
     options.addArguments("--headless");
     options.addArguments("--no-sandbox");
+    options.addArguments("--disable-dev-shm-usage");
+    options.addArguments("--remote-allow-origins=*");
 
     // By default, the test uses the latest stable Chrome version.
     // Replace the "stable" with the specific browser version if needed,
     // e.g. 'canary', '115' or '144.0.7534.0' for example.
-    options.setBrowserVersion("stable");
+    options.setBrowserVersion("121");
 
     ChromeDriverService service =
         new ChromeDriverService.Builder()
-            .withLogFile(new java.io.File("chromedriver.log"))
+            .withLogFile(new File("chromedriver.log"))
             .withVerbose(true)
             .build();
 
@@ -64,7 +73,13 @@ public class RegressionTest {
   }
 
   @Test
-  public void ISSUE_REPRODUCTION() {
-    // Add test reproducing the issue here.
+  public void bug_42323732() {
+    for (int i = 0; i < 100; i++) {
+      System.out.println("Executing run #" + (i + 1));
+      driver.get("file:///usr/local/google/home/sadym/chromedriver-bug-repro-templates-2/selenium-java/index.html");
+      new WebDriverWait(driver, Duration.ofSeconds(5))
+          .until(ExpectedConditions.elementToBeClickable(By.xpath("//a[contains(@href, \"github.com\")]")));
+      driver.findElement(By.xpath("//a[contains(@href, \"github.com\")]")).click();
+    }
   }
 }
