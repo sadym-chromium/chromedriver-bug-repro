@@ -29,7 +29,7 @@ jobs:
     - name: Set up Node.js
       uses: actions/setup-node@v3
       with:
-        node-version: '18'
+        node-version: '22'
         cache: 'npm'
         cache-dependency-path: android-selenium-java/package-lock.json
 
@@ -42,9 +42,7 @@ jobs:
 
     - name: Install Appium and UIAutomator2 Driver
       run: |
-        npm uninstall -g appium
         npm install -g appium@latest
-        appium --version
         appium driver install uiautomator2
     - name: Start Appium Server
       run: |
