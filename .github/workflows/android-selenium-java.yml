@@ -17,6 +17,7 @@ concurrency:
 jobs:
   test:
     runs-on: macos-14
+    timeout-minutes: 10
 
     steps:
     - uses: actions/checkout@v3
@@ -60,6 +61,7 @@ jobs:
         fi
     - name: Run tests on Android Emulator
       uses: reactivecircus/android-emulator-runner@v2
+      timeout-minutes: 6
       with:
         api-level: 30
         target: google_apis
