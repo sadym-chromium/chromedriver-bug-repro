@@ -13,46 +13,105 @@
 #  limitations under the License.
 
 import logging
+import time
 import pytest
 from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
-from selenium.webdriver.chrome.service import Service
+from selenium.webdriver.common.by import By
+from selenium.webdriver.support.ui import WebDriverWait
+from selenium.webdriver.support import expected_conditions as EC
 
 # The chrome and chromedriver installation can take some time.
 # Give 5 minutes to install everything.
 TIMEOUT = 5 * 60 * 1000
 
-
-@pytest.fixture(scope="module")
-def driver():
-    # By default, the test uses the latest stable Chrome version.
-    # Replace the "stable" with the specific browser version if needed,
-    # e.g. 'canary', '115' or '144.0.7534.0' for example.
-    browser_version = "stable"
-
+def create_driver():
     options = Options()
-    options.add_argument("--headless")
+    options.add_argument("--headless=new") # Use new headless mode
     options.add_argument("--no-sandbox")
-    options.browser_version = browser_version
-
-    service = Service(service_args=["--log-path=chromedriver.log", "--verbose"])
-
-    driver = webdriver.Chrome(options=options, service=service)
-
-    yield driver
-
-    driver.quit()
-
+    options.browser_version = "stable"
+    
+    driver = webdriver.Chrome(options=options)
+    return driver
 
 @pytest.mark.timeout(TIMEOUT)
-def test_should_be_able_to_navigate_to_google_com(driver):
-    """This test is intended to verify the setup is correct."""
-    driver.get("https://www.google.com")
-    logging.info(driver.title)
-    assert driver.title == "Google"
+def test_raf_in_background():
+    """
+    Reproduces Issue 42323455: requestAnimationFrame() not being called in background browsers.
+    """
+    
+    html_content = """
+    <!DOCTYPE html>
+    <html>
+    <body>
+    <div id="status">Pending</div>
+    <script>
+        function update() {
+            document.getElementById('status').innerText = 'Done';
+        }
+        function startUpdate() {
+            // Use requestAnimationFrame to trigger the update
+            requestAnimationFrame(update);
+        }
+    </script>
+    </body>
+    </html>
+    """
+    
+    data_url = f"data:text/html;charset=utf-8,{html_content}"
 
+    driver1 = None
+    driver2 = None
+    
+    try:
+        logging.info("Starting Driver 1...")
+        driver1 = create_driver()
+        
+        logging.info("Starting Driver 2...")
+        driver2 = create_driver()
+        
+        # Load page in Driver 1
+        logging.info("Loading page in Driver 1")
+        driver1.get(data_url)
+        
+        # Minimize Driver 1 to put it in background
+        logging.info("Minimizing Driver 1...")
+        driver1.minimize_window()
+        
+        # Verify Driver 1 is hidden
+        vis1 = driver1.execute_script("return document.visibilityState;")
+        logging.info(f"Driver 1 visibilityState: {vis1}")
+        
+        # Trigger rAF in Driver 1 (Background)
+        logging.info("Triggering rAF in Driver 1 (Background)...")
+        driver1.execute_script("startUpdate();")
+        
+        # Load page in Driver 2 (Foreground)
+        logging.info("Loading page in Driver 2")
+        driver2.get(data_url)
+        logging.info("Triggering rAF in Driver 2 (Foreground)...")
+        driver2.execute_script("startUpdate();")
 
-@pytest.mark.timeout(TIMEOUT)
-def test_issue_reproduction(driver):
-    """Add test reproducing the issue here."""
-    pass
+        # Define a wait function
+        def wait_for_done(driver, name):
+            logging.info(f"Waiting for 'Done' in {name}...")
+            try:
+                WebDriverWait(driver, 5).until(
+                    EC.text_to_be_present_in_element((By.ID, "status"), "Done")
+                )
+                logging.info(f"{name}: Success - text updated.")
+            except Exception as e:
+                logging.error(f"{name}: Failed - text did not update. Error: {e}")
+                raise e
+
+        # Check Driver 2 first (Foreground - should pass)
+        wait_for_done(driver2, "Driver 2")
+        
+        # Check Driver 1 (Background - expected to fail if bug exists)
+        wait_for_done(driver1, "Driver 1")
+        
+    finally:
+        if driver1:
+            driver1.quit()
+        if driver2:
+            driver2.quit()
