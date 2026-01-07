@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-const { Builder } = require('selenium-webdriver');
+const { Builder, By } = require('selenium-webdriver');
 const { expect } = require('expect');
 const chrome = require('selenium-webdriver/chrome');
 
@@ -33,6 +33,14 @@ describe('Selenium ChromeDriver', function () {
     // Replace the "stable" with the specific browser version if needed,
     // e.g. 'canary', '115' or '144.0.7534.0' for example.
     options.setBrowserVersion('stable');
+    
+    // Reproduce the issue by setting mobileEmulation
+    options.setMobileEmulation({
+        deviceMetrics: {
+            width: 1920,
+            height: 1080
+        }
+    });
 
     const service = new chrome.ServiceBuilder()
       .loggingTo('chromedriver.log')
@@ -49,16 +57,17 @@ describe('Selenium ChromeDriver', function () {
     await driver.quit();
   });
 
-  /**
-   * This test is intended to verify the setup is correct.
-   */
-  it('should be able to navigate to google.com', async function () {
-    await driver.get('https://www.google.com');
-    const title = await driver.getTitle();
-    expect(title).toBe('Google');
-  });
+  it('ISSUE REPRODUCTION: should not crash when using Actions API with mobileEmulation', async function () {
+    await driver.get('https://json.org');
+    const div = await driver.findElement(By.css('div'));
+    
+    // Attempt to click using standard element click (might use touch)
+    await div.click();
+    
+    // Attempt to use Actions API to click
+    const actions = driver.actions({async: true});
+    await actions.move({origin: div}).click().perform();
 
-  it('ISSUE REPRODUCTION', async function () {
-    // Add test reproducing the issue here.
+    // If we are still alive, the bug is not reproduced or fixed.
   });
 });
