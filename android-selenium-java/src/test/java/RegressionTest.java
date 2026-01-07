@@ -15,14 +15,22 @@
  */
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import io.appium.java_client.android.AndroidDriver;
 import io.appium.java_client.android.options.UiAutomator2Options;
 import java.net.MalformedURLException;
 import java.net.URL;
+import java.time.Duration;
+import java.util.Arrays;
+import java.util.Collections;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.openqa.selenium.By;
+import org.openqa.selenium.WebElement;
+import org.openqa.selenium.interactions.PointerInput;
+import org.openqa.selenium.interactions.Sequence;
 
 public class RegressionTest {
 
@@ -62,6 +70,72 @@ public class RegressionTest {
 
   @Test
   public void ISSUE_REPRODUCTION() {
-    // Add test reproducing the issue here.
+    // This test reproduces crbug.com/42321409 (chromedriver:2332)
+    // Description: testTouchScrollElement fails with Webview
+    // The test navigates to a page with a scrollable area and performs a touch scroll action.
+    // It is expected to fail if scrollLeft/scrollTop remains 0 after the action.
+
+    String html = "<!DOCTYPE html>" +
+        "<html lang='en'>" +
+        "  <head>" +
+        "    <meta charset='UTF-8'>" +
+        "    <meta name='viewport' content='width=device-width,minimum-scale=1'>" +
+        "    <title>Touch Action Test Page</title>" +
+        "  </head>" +
+        "  <body>" +
+        "    <div id='target' style='height: 100px; width: 100px; background: red;'>Events are logged when tests touch this div.</div>" +
+        "    <div id='events' style='white-space:nowrap;'>events: </div>" +
+        "    <div id='padding' style='border: solid; height: 2000px; width: 2000px;'>Padding</div>" +
+        "    <script>" +
+        "      events = document.getElementById('events');" +
+        "      var eventTypes = ['touchstart', 'touchend', 'touchmove', 'touchcancel'];" +
+        "      var eventListener = function(evt) {" +
+        "        events.innerHTML += ' ' + evt.type;" +
+        "      };" +
+        "      var target = document.getElementById('target');" +
+        "      for (var i = 0; i < eventTypes.length; i++) {" +
+        "        target.addEventListener(eventTypes[i], eventListener);" +
+        "      }" +
+        "    </script>" +
+        "  </body>" +
+        "</html>";
+    String encodedHtml = java.util.Base64.getEncoder().encodeToString(html.getBytes());
+    driver.get("data:text/html;base64," + encodedHtml);
+
+    // Verify initial scroll position is 0
+    long scrollLeftBefore = ((Number) driver.executeScript("return document.documentElement.scrollLeft || document.body.scrollLeft;")).longValue();
+    long scrollTopBefore = ((Number) driver.executeScript("return document.documentElement.scrollTop || document.body.scrollTop;")).longValue();
+    assertEquals(0, scrollLeftBefore);
+    assertEquals(0, scrollTopBefore);
+
+    WebElement target = driver.findElement(By.id("target"));
+    
+    // Simulate a touch scroll by swiping from the target element.
+    // We move the finger from target center to a position moved by (47, 53).
+    // Note: To scroll DOWN and RIGHT, we need to swipe UP and LEFT in viewport coordinates if we were dragging the content,
+    // but TouchScroll usually means "scroll the view". 
+    // In Python ChromeDriver, TouchScroll(target, 47, 53) scrolls the element or page.
+    
+    PointerInput finger = new PointerInput(PointerInput.Kind.TOUCH, "finger");
+    Sequence scroll = new Sequence(finger, 0);
+    scroll.addAction(finger.createPointerMove(Duration.ZERO, PointerInput.Origin.fromElement(target), 0, 0));
+    scroll.addAction(finger.createPointerDown(PointerInput.MouseButton.LEFT.asArg()));
+    // Swipe to perform scroll
+    scroll.addAction(finger.createPointerMove(Duration.ofMillis(500), PointerInput.Origin.fromElement(target), -47, -53));
+    scroll.addAction(finger.createPointerUp(PointerInput.MouseButton.LEFT.asArg()));
+    driver.perform(Collections.singletonList(scroll));
+
+    // Wait a bit for scroll to finish
+    try { Thread.sleep(1000); } catch (InterruptedException e) {}
+
+    long scrollLeftAfter = ((Number) driver.executeScript("return document.documentElement.scrollLeft || document.body.scrollLeft;")).longValue();
+    long scrollTopAfter = ((Number) driver.executeScript("return document.documentElement.scrollTop || document.body.scrollTop;")).longValue();
+    
+    System.out.println("Scroll Left After: " + scrollLeftAfter);
+    System.out.println("Scroll Top After: " + scrollTopAfter);
+
+    // If the bug exists, scrollLeftAfter will be 0 (or close to it), failing the assertion.
+    assertTrue(scrollLeftAfter > 0, "Expected scrollLeft to be > 0, but was " + scrollLeftAfter);
+    assertTrue(scrollTopAfter > 0, "Expected scrollTop to be > 0, but was " + scrollTopAfter);
   }
 }
