@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-const { Builder } = require('selenium-webdriver');
+const { Builder, By, until } = require('selenium-webdriver');
 const { expect } = require('expect');
 const chrome = require('selenium-webdriver/chrome');
 
@@ -26,12 +26,13 @@ describe('Selenium ChromeDriver', function () {
 
   beforeEach(async function () {
     const options = new chrome.Options();
-    options.addArguments('--headless');
+    // Options from the bug report
+    options.addArguments('--mute-audio');
+    options.addArguments('--autoplay-policy=no-user-gesture-required');
+    
+    // Existing options for stability in CLI environment
+    options.addArguments('--headless=new');
     options.addArguments('--no-sandbox');
-
-    // By default, the test uses the latest stable Chrome version.
-    // Replace the "stable" with the specific browser version if needed,
-    // e.g. 'canary', '115' or '144.0.7534.0' for example.
     options.setBrowserVersion('stable');
 
     const service = new chrome.ServiceBuilder()
@@ -46,19 +47,41 @@ describe('Selenium ChromeDriver', function () {
   });
 
   afterEach(async function () {
-    await driver.quit();
+    if (driver) {
+      await driver.quit();
+    }
   });
 
-  /**
-   * This test is intended to verify the setup is correct.
-   */
-  it('should be able to navigate to google.com', async function () {
-    await driver.get('https://www.google.com');
-    const title = await driver.getTitle();
-    expect(title).toBe('Google');
-  });
+  it('should reproduce "no such execution context" error with MutationObserver', async function () {
+    const testUrl = "https://www.youtube.com/watch?v=aqz-KE-bpKQ";
+    await driver.get(testUrl);
 
-  it('ISSUE REPRODUCTION', async function () {
-    // Add test reproducing the issue here.
+    // Wait for the player to be located (using a stable selector for YouTube)
+    // Note: The original repro used "#player .html5-video-player", but specific IDs might change.
+    // We use "#movie_player" which is standard.
+    await driver.wait(until.elementLocated(By.id("movie_player")), 20000);
+
+    // The bug report states that this executeScript call triggers the error
+    // "WebDriverError: no such execution context".
+    // We add 'return' to ensure the driver waits for the Promise to resolve.
+    // In this environment, it might timeout if the element doesn't appear,
+    // but on affected versions, it throws the specific error.
+    await driver.executeScript(`
+        let observer;
+        function createObserver() {
+            return new Promise(function(resolve) {
+                observer = new MutationObserver(function() {
+                    const panel = document.querySelector('.html5-video-info-panel');
+                    if (!panel) return;
+                    observer.disconnect();
+                    resolve(panel);
+                });
+                observer.observe(document, { childList: true, subtree: true });
+            });
+        }
+        return (async function() {
+            await createObserver();
+        })();
+    `);
   });
 });
