@@ -6,5 +6,11 @@
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "author": "",
-  "license": "ISC"
+  "license": "ISC",
+  "dependencies": {
+    "appium": "^3.1.2"
+  },
+  "devDependencies": {
+    "appium-uiautomator2-driver": "^6.7.8"
+  }
 }

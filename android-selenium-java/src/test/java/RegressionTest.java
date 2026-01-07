@@ -20,9 +20,15 @@ import io.appium.java_client.android.AndroidDriver;
 import io.appium.java_client.android.options.UiAutomator2Options;
 import java.net.MalformedURLException;
 import java.net.URL;
+import java.time.Duration;
+import java.util.Map;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.openqa.selenium.By;
+import org.openqa.selenium.WebElement;
+import org.openqa.selenium.support.ui.ExpectedConditions;
+import org.openqa.selenium.support.ui.WebDriverWait;
 
 public class RegressionTest {
 
@@ -30,7 +36,7 @@ public class RegressionTest {
 
   @BeforeEach
   public void setUp() throws MalformedURLException {
-    // Configure UiAutomator2Options for Appium to automate Chrome on an Android emulator
+    // Configure UiAutomator2Options for Appium to automate Chrome Canary on an Android emulator
     UiAutomator2Options options = new UiAutomator2Options()
         .setPlatformName("Android")
         .setDeviceName("Android Emulator")
@@ -38,6 +44,18 @@ public class RegressionTest {
         .withBrowserName("Chrome")
         .setNoReset(true)
         .setUiautomator2ServerInstallTimeout(java.time.Duration.ofMillis(60000));
+
+    // Allow overriding via system properties for CI
+    String androidPackage = System.getProperty("androidPackage", "com.chrome.canary");
+    String chromedriverPath = System.getProperty("chromedriverExecutable", "/usr/local/google/home/sadym/chromedriver-bug-repro/chromedriver/linux-139.0.7258.154/chromedriver-linux64/chromedriver");
+
+    // Force using Chrome Canary (or specified package)
+    options.setCapability("appium:chromeOptions", Map.of("androidPackage", androidPackage));
+    
+    // Set ChromeDriver path if provided
+    if (chromedriverPath != null && !chromedriverPath.isEmpty()) {
+        options.setCapability("appium:chromedriverExecutable", chromedriverPath);
+    }
 
     // Initialize AndroidDriver, connecting to the Appium server (usually http://127.0.0.1:4723)
     driver = new AndroidDriver(new URL("http://127.0.0.1:4723"), options);
@@ -62,6 +80,37 @@ public class RegressionTest {
 
   @Test
   public void ISSUE_REPRODUCTION() {
-    // Add test reproducing the issue here.
+    // Create a simple HTML page with a button far down the page
+    String html = "data:text/html," +
+        "<html><body style='margin:0; padding:0;'>" +
+        "<div style='height: 2000px; background: lightgrey;'>Spacer</div>" +
+        "<button id='login' style='height: 50px; width: 100px;'>Login</button>" +
+        "<br><br>" +
+        "<input type='radio' id='type_stock'>Stock</input>" +
+        "<div style='height: 1000px;'>Footer</div>" +
+        "</body></html>";
+    driver.get(html);
+
+    System.out.println("Chrome version: " + driver.getCapabilities().getBrowserVersion());
+
+    WebDriverWait wait = new WebDriverWait(driver, Duration.ofSeconds(10));
+
+    WebElement loginButton = driver.findElement(By.id("login"));
+    
+    // Check initial status - it should be false if out of viewport in some mobile contexts?
+    // Actually Selenium isDisplayed usually returns true if it's in the DOM and not hidden by CSS
+    // regardless of viewport. But mobile rendering can be different.
+    System.out.println("Login button isDisplayed (before scroll): " + loginButton.isDisplayed());
+
+    // Attempt to wait for the button to be clickable
+    // verified that this fails on affected versions because isDisplayed() returns false
+    wait.until(ExpectedConditions.elementToBeClickable(loginButton));
+    loginButton.click();
+
+    // Verify radio button as well
+    WebElement radioButton = driver.findElement(By.cssSelector("input#type_stock"));
+    System.out.println("Radio button isDisplayed: " + radioButton.isDisplayed());
+    wait.until(ExpectedConditions.elementToBeClickable(radioButton));
+    radioButton.click();
   }
 }

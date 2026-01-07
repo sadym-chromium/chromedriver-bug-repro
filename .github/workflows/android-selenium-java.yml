@@ -43,6 +43,20 @@ jobs:
         npm install -g appium@latest
         appium driver install uiautomator2
 
+    - name: Install ChromeDriver Canary
+      run: |
+        npx @puppeteer/browsers install chromedriver@canary
+        # Capture the path. @puppeteer/browsers outputs "chromedriver@<ver> <path>"
+        CHROMEDRIVER_PATH=$(npx @puppeteer/browsers install chromedriver@canary | awk '{print $2}')
+        echo "CHROMEDRIVER_PATH=$CHROMEDRIVER_PATH" >> $GITHUB_ENV
+
+    # Note: Chrome Canary APK for x86_64 is not reliably available via public URL.
+    # You must provide the APK (e.g., upload to repo or download from private storage).
+    # - name: Install Chrome Canary APK
+    #   run: |
+    #     curl -o ChromeCanary.apk <URL_TO_X86_64_APK>
+    #     adb install -r ChromeCanary.apk
+
     - name: Run tests on Android Emulator
       uses: reactivecircus/android-emulator-runner@v2
       with:
@@ -52,7 +66,19 @@ jobs:
         force-avd-creation: true
         emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
         disable-animations: true
-        script: appium --allow-insecure uiautomator2:chromedriver_autodownload > appium.log 2>&1 & i=0; while [ $i -lt 60 ]; do if curl -s http://127.0.0.1:4723/status > /dev/null; then break; fi; sleep 1; i=$((i+1)); done; mvn -B test --file android-selenium-java/pom.xml
+        script: |
+          appium --allow-insecure uiautomator2:chromedriver_autodownload > appium.log 2>&1 &
+          
+          # Wait for Appium
+          i=0; while [ $i -lt 60 ]; do if curl -s http://127.0.0.1:4723/status > /dev/null; then break; fi; sleep 1; i=$((i+1)); done
+          
+          # Run test with Canary configuration
+          # Note: If APK is not installed, this will fail or fallback if configured.
+          # For public CI without APK, we might want to default to system Chrome (remove -DandroidPackage)
+          # But here we configure it for Canary as requested.
+          mvn -B test --file android-selenium-java/pom.xml \
+            -DandroidPackage="com.chrome.canary" \
+            -DchromedriverExecutable="$CHROMEDRIVER_PATH"
 
     - name: Upload logs
       if: always()

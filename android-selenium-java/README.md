@@ -71,6 +71,42 @@ public void ISSUE_REPRODUCTION() {
 }
 ```
 
+## Running with Different Chrome Versions
+
+To test against specific versions of Chrome (e.g., Beta, Canary, or older versions), follow these steps:
+
+1.  **Install the Chrome APK**:
+    *   Download the APK for the desired version (e.g., from a trusted archive or build server).
+    *   Install it on your device/emulator: `adb install -r <path_to_apk>`
+    *   Identify the package name:
+        *   Stable: `com.android.chrome`
+        *   Beta: `com.chrome.beta`
+        *   Dev: `com.chrome.dev`
+        *   Canary: `com.chrome.canary`
+
+2.  **Download Matching ChromeDriver**:
+    *   You need a ChromeDriver binary that matches the installed Chrome version.
+    *   Download it using `@puppeteer/browsers` (requires Node.js):
+        ```bash
+        npx @puppeteer/browsers install chromedriver@<version>
+        # Example for Canary 138:
+        npx @puppeteer/browsers install chromedriver@138
+        ```
+    *   Note the installation path output by the command.
+
+3.  **Configure the Test**:
+    *   Open `src/test/java/RegressionTest.java`.
+    *   Update the `setUp()` method to specify the `androidPackage` and `chromedriverExecutable`:
+
+    ```java
+    import java.util.Map;
+    // ...
+    
+    // In setUp():
+    options.setCapability("appium:chromeOptions", Map.of("androidPackage", "com.chrome.canary"));
+    options.setCapability("appium:chromedriverExecutable", "/path/to/downloaded/chromedriver");
+    ```
+
 ## Automating Triage with Gemini CLI
 
 The Gemini CLI can be used to automate the bug triaging process using the template

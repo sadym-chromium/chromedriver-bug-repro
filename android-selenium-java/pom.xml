@@ -50,13 +50,13 @@
     <dependency>
       <groupId>org.seleniumhq.selenium</groupId>
       <artifactId>selenium-java</artifactId>
-      <version>4.33.0</version>
+      <version>4.35.0</version>
       <scope>test</scope>
     </dependency>
     <dependency>
       <groupId>io.appium</groupId>
       <artifactId>java-client</artifactId>
-      <version>9.2.2</version>
+      <version>10.0.0</version>
       <scope>test</scope>
     </dependency>
     <dependency>
