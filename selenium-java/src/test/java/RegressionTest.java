@@ -33,10 +33,13 @@ public class RegressionTest {
     ChromeOptions options = new ChromeOptions();
     options.addArguments("--headless");
     options.addArguments("--no-sandbox");
+    
+    // Bug report specific options
+    options.addArguments("--disable-gpu");
+    options.addArguments("--remote-allow-origins=*");
+    options.addArguments("--start-maximized");
 
     // By default, the test uses the latest stable Chrome version.
-    // Replace the "stable" with the specific browser version if needed,
-    // e.g. 'canary', '115' or '144.0.7534.0' for example.
     options.setBrowserVersion("stable");
 
     ChromeDriverService service =
@@ -65,6 +68,14 @@ public class RegressionTest {
 
   @Test
   public void ISSUE_REPRODUCTION() {
-    // Add test reproducing the issue here.
+    // Navigate to a simple page
+    driver.get("data:text/html,<html><body><h1>Hello World</h1></body></html>");
+    
+    // Attempt to find the body element using XPath as described in the issue
+    // The issue states that this throws NoSuchElementException
+    org.openqa.selenium.WebElement element = driver.findElement(org.openqa.selenium.By.xpath("//html//body"));
+    
+    // If we reach here, the element was found. We can assert it's not null or check text.
+    assertEquals("Hello World", element.getText());
   }
 }
