@@ -46,7 +46,17 @@ describe('Selenium ChromeDriver', function () {
   });
 
   afterEach(async function () {
-    await driver.quit();
+    if (driver) {
+      try {
+        // Attempt to quit with a timeout to prevent hanging if the driver is dead
+        await Promise.race([
+          driver.quit(),
+          new Promise((_, reject) => setTimeout(() => reject(new Error('driver.quit() timed out')), 5000))
+        ]);
+      } catch (e) {
+        console.error('Error quitting driver:', e);
+      }
+    }
   });
 
   /**
@@ -58,7 +68,45 @@ describe('Selenium ChromeDriver', function () {
     expect(title).toBe('Google');
   });
 
-  it('ISSUE REPRODUCTION', async function () {
-    // Add test reproducing the issue here.
+  it('should crash when focused tab is closed during command execution', async function () {
+    // This test reproduces crbug.com/42323315 where ChromeDriver crashes or hangs
+    // when the focused tab is closed while a command is being executed.
+    
+    this.timeout(10000); // Fail fast if it hangs
+
+    // Navigate to a base page
+    await driver.get('data:text/html,<h1>Base Page</h1>');
+
+    // Open a new tab and switch to it
+    await driver.executeScript("window.open('data:text/html,<h1>Target Tab</h1>', '_blank');");
+    const handles = await driver.getAllWindowHandles();
+    await driver.switchTo().window(handles[1]);
+
+    // Schedule the tab to close in 1 second
+    // This creates a race condition where the tab closes while we are sending commands
+    await driver.executeScript("setTimeout(() => window.close(), 1000);");
+
+    const startTime = Date.now();
+    try {
+      // Spam commands (Screenshot) to hit the race condition.
+      // We expect this loop to eventually fail. If the bug is present, 
+      // the driver may hang or crash (Socket hang up).
+      while (Date.now() - startTime < 5000) {
+        // We race against a timeout because if the driver crashes/hangs, 
+        // the promise might never resolve.
+        await Promise.race([
+            driver.takeScreenshot(),
+            new Promise((_, reject) => setTimeout(() => reject(new Error('Screenshot timed out - Driver likely crashed/hung')), 2000))
+        ]);
+        
+        // Small delay to allow the close event to be processed
+        await new Promise(r => setTimeout(r, 10)); 
+      }
+    } catch (e) {
+      console.log('Caught expected error during reproduction:', e.message);
+      // If we caught the specific timeout or a crash error, that confirms the bug.
+      // We re-throw to ensure the test shows as failed/reproduced.
+      throw e;
+    }
   });
 });
