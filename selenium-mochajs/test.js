@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-const { Builder } = require('selenium-webdriver');
+const { Builder, logging } = require('selenium-webdriver');
 const { expect } = require('expect');
 const chrome = require('selenium-webdriver/chrome');
 
@@ -28,6 +28,13 @@ describe('Selenium ChromeDriver', function () {
     const options = new chrome.Options();
     options.addArguments('--headless');
     options.addArguments('--no-sandbox');
+    options.addArguments('--disable-dev-shm-usage');
+
+    // Enable performance logging
+    const prefs = new logging.Preferences();
+    prefs.setLevel(logging.Type.PERFORMANCE, logging.Level.ALL);
+    options.setLoggingPrefs(prefs);
+    options.setPerfLoggingPrefs({enableNetwork: true});
 
     // By default, the test uses the latest stable Chrome version.
     // Replace the "stable" with the specific browser version if needed,
@@ -46,7 +53,9 @@ describe('Selenium ChromeDriver', function () {
   });
 
   afterEach(async function () {
-    await driver.quit();
+    if (driver) {
+      await driver.quit();
+    }
   });
 
   /**
@@ -58,7 +67,51 @@ describe('Selenium ChromeDriver', function () {
     expect(title).toBe('Google');
   });
 
-  it('ISSUE REPRODUCTION', async function () {
-    // Add test reproducing the issue here.
+  /**
+   * Test case for crbug.com/42323057
+   * 
+   * Reproduction steps:
+   * 1. Enable performance logging with network domain enabled.
+   * 2. Start ChromeDriver in headless mode.
+   * 3. Navigate to a site with a signed certificate (e.g., https://www.google.com).
+   * 4. Retrieve performance logs.
+   * 5. Parse logs for Network.responseReceived events.
+   * 6. Check if securityDetails.signedCertificateTimestampList is present and not empty.
+   * 
+   * Expected behavior: The list should NOT be empty.
+   * If the bug exists, the list will be empty, and the assertion will fail.
+   */
+  it('should have signedCertificateTimestampList in headless mode', async function () {
+    await driver.get('https://www.google.com');
+
+    // Get performance logs
+    const logs = await driver.manage().logs().get(logging.Type.PERFORMANCE);
+    
+    let sctFound = false;
+    
+    for (const entry of logs) {
+      const message = JSON.parse(entry.message);
+      const method = message.message.method;
+      
+      // Look for Network.responseReceived event
+      if (method === 'Network.responseReceived') {
+        const params = message.message.params;
+        // Check if securityDetails exists
+        if (params.response && params.response.securityDetails) {
+            const sctList = params.response.securityDetails.signedCertificateTimestampList;
+            
+            // Log for debugging (optional)
+            // console.log('SCT List found:', sctList);
+
+            // Check if SCT list is not empty
+            if (sctList && sctList.length > 0) {
+                sctFound = true;
+                break;
+            }
+        }
+      }
+    }
+    
+    expect(sctFound).toBe(true);
   });
 });
