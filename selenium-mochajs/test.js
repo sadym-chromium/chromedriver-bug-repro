@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-const { Builder } = require('selenium-webdriver');
+const { Builder, By, until } = require('selenium-webdriver');
 const { expect } = require('expect');
 const chrome = require('selenium-webdriver/chrome');
 
@@ -26,7 +26,7 @@ describe('Selenium ChromeDriver', function () {
 
   beforeEach(async function () {
     const options = new chrome.Options();
-    options.addArguments('--headless');
+    options.addArguments('--headless=new');
     options.addArguments('--no-sandbox');
 
     // By default, the test uses the latest stable Chrome version.
@@ -58,7 +58,33 @@ describe('Selenium ChromeDriver', function () {
     expect(title).toBe('Google');
   });
 
-  it('ISSUE REPRODUCTION', async function () {
-    // Add test reproducing the issue here.
+  it('should allow selecting an option after taking a screenshot', async function () {
+    // Load local file
+    const path = require('path');
+    const url = 'file://' + path.resolve(__dirname, 'reproduce_issue.html');
+    await driver.get(url);
+
+    const selectLocator = By.id('mySelect');
+    const selectBox = await driver.wait(until.elementLocated(selectLocator), 5000);
+
+    // Click to expand
+    await selectBox.click();
+
+    // Take a screenshot
+    await driver.takeScreenshot();
+
+    // Sleep a tiny bit to allow any side effects to propagate
+    await new Promise((r) => setTimeout(r, 500));
+
+    // Attempt to select the second option
+    const options = await selectBox.findElements(By.css('option'));
+    const secondOption = options[1];
+    
+    // Attempt to click. In a strictly compliant environment (like Windows headful),
+    // this should fail if the screenshot collapsed the dropdown.
+    await secondOption.click(); 
+    
+    const isSelected = await secondOption.isSelected();
+    expect(isSelected).toBe(true);
   });
 });
