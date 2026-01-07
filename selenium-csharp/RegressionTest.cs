@@ -23,30 +23,36 @@ namespace RegressionTest;
 public class Tests
 {
     [Test]
-    public void ShouldBeAbleToNavigateAfterDeletingNetworkConditions()
+    public void ShouldThrowExceptionWhenNavigatingWithServiceWorkerWindowType()
     {
         var options = new ChromeOptions();
         options.AddArgument("--headless");
         options.AddArgument("--no-sandbox");
-        // By default, the test uses the latest stable Chrome version.
-        // Replace the "stable" with the specific browser version if needed,
-        // e.g. 'canary', '115' or '144.0.7534.0' for example.
         options.BrowserVersion = "stable";
+        
+        // Configuration to reproduce the bug: include "service_worker" in windowTypes
+        options.AddWindowTypes("webview", "service_worker");
 
         var service = ChromeDriverService.CreateDefaultService();
-        service.LogPath = "d:\\chromedriver.log";
+        service.LogPath = "chromedriver.log";
         service.EnableVerboseLogging = true;
 
-        IWebDriver driver = new ChromeDriver(service, options);
-
+        IWebDriver driver = null;
         try
         {
-            driver.Navigate().GoToUrl("https://www.google.com");
-            Assert.That(driver.Title, Is.EqualTo("Google"));
+            driver = new ChromeDriver(service, options);
+
+            // Bug 42323033: Navigation fails with "web view not found" when service_worker windowType is enabled
+            // We expect this to SUCCEED if the bug is fixed.
+            // If the bug exists, this line will throw WebDriverException: unknown error: web view not found
+            driver.Navigate().GoToUrl("https://mdn.github.io/dom-examples/service-worker/simple-service-worker/");
+            
+            // Verify navigation succeeded
+            Assert.That(driver.Url, Does.Contain("mdn.github.io"), "Navigation failed or redirected unexpectedly.");
         }
         finally
         {
-            driver.Quit();
+            driver?.Quit();
         }
     }
 }
