@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -23,20 +23,47 @@ import org.openqa.selenium.WebDriver;
 import org.openqa.selenium.chrome.ChromeDriver;
 import org.openqa.selenium.chrome.ChromeDriverService;
 import org.openqa.selenium.chrome.ChromeOptions;
+import java.io.File;
+import java.util.HashMap;
+import java.util.Map;
 
 public class RegressionTest {
 
   private WebDriver driver;
+  private File downloadDir;
 
   @BeforeEach
   public void setUp() {
-    ChromeOptions options = new ChromeOptions();
-    options.addArguments("--headless");
-    options.addArguments("--no-sandbox");
+    downloadDir = new File(System.getProperty("user.dir"), "downloads");
+    if (!downloadDir.exists()) {
+      downloadDir.mkdirs();
+    }
+    
+    // Clean up directory
+    if (downloadDir.listFiles() != null) {
+        for (File file : downloadDir.listFiles()) {
+            file.delete();
+        }
+    }
 
-    // By default, the test uses the latest stable Chrome version.
-    // Replace the "stable" with the specific browser version if needed,
-    // e.g. 'canary', '115' or '144.0.7534.0' for example.
+    Map<String, Object> prefs = new HashMap<>();
+    prefs.put("download.default_directory", downloadDir.getAbsolutePath());
+    prefs.put("download.prompt_for_download", false);
+    prefs.put("safebrowsing.enabled", true); // User explicitly sets this to true in the report
+    
+    ChromeOptions options = new ChromeOptions();
+    options.setExperimentalOption("prefs", prefs);
+    options.addArguments("--headless=new");
+    options.addArguments("--no-sandbox");
+    options.addArguments("start-maximized");
+    options.addArguments("--safebrowsing-disable-download-protection");
+    options.addArguments("safebrowsing-disable-extension"); // Keeping the typo as per user report
+    // Note: Even correcting the typo above to "--safebrowsing-disable-extension"
+    // and setting "safebrowsing.enabled" to false does NOT resolve the issue.
+    // The Safe Browsing blocking persists.
+    
+    options.setBrowserVersion("stable");
+    
     options.setBrowserVersion("stable");
 
     ChromeDriverService service =
@@ -56,15 +83,39 @@ public class RegressionTest {
   }
 
   @Test
-  public void verifySetup_shouldBeAbleToNavigateToGoogleCom() {
-    // Navigate to a URL
-    driver.get("https://www.google.com");
-    // Assert that the navigation was successful
-    assertEquals("Google", driver.getTitle());
-  }
+  public void ISSUE_REPRODUCTION() throws InterruptedException {
+    // Attempt to download EICAR test file which should trigger Safe Browsing/Malware warning
+    String fileUrl = "https://secure.eicar.org/eicar.com"; 
+    String expectedFileName = "eicar.com";
+    
+    System.out.println("Attempting to download: " + fileUrl);
+    try {
+        driver.get(fileUrl);
+    } catch (Exception e) {
+        System.out.println("Navigation failed (expected for some blocked downloads): " + e.getMessage());
+    }
 
-  @Test
-  public void ISSUE_REPRODUCTION() {
-    // Add test reproducing the issue here.
+    // Wait for download to complete
+    File downloadedFile = new File(downloadDir, expectedFileName);
+    boolean downloaded = false;
+    for (int i = 0; i < 30; i++) { // Wait up to 30 seconds
+        if (downloadedFile.exists() && downloadedFile.length() > 0) {
+            downloaded = true;
+            break;
+        }
+        Thread.sleep(1000);
+    }
+    
+    if (!downloaded) {
+        System.out.println("File not found in: " + downloadDir.getAbsolutePath());
+        if (downloadDir.listFiles() != null) {
+            System.out.println("Files in dir:");
+            for (File f : downloadDir.listFiles()) {
+                System.out.println(" - " + f.getName());
+            }
+        }
+    }
+
+    assertTrue(downloaded, "File should be downloaded. If failed, Safe Browsing likely blocked it.");
   }
 }
