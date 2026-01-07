@@ -59,6 +59,29 @@ describe('Selenium ChromeDriver', function () {
   });
 
   it('ISSUE REPRODUCTION', async function () {
-    // Add test reproducing the issue here.
+    // Reproduce crbug.com/42323527
+    // Recent chromedriver versions appear to be mangling href properties containing `?`
+    
+    // Create a link with a javascript: href containing a '?'
+    const href = 'javascript:void(0)?foo=bar';
+    
+    // We can just use a data URL or inject HTML into the current page
+    await driver.get('data:text/html,<body></body>');
+    
+    await driver.executeScript(`
+      const a = document.createElement('a');
+      a.href = arguments[0];
+      a.id = 'test-link';
+      a.textContent = 'Click me';
+      document.body.appendChild(a);
+    `, href);
+
+    const link = await driver.findElement({ id: 'test-link' });
+    const actualHref = await link.getAttribute('href');
+    
+    // The bug states that the property is mangled (URL encoded after '?')
+    // javascript:void(0)?foo=bar might become javascript:void(0)?foo%3Dbar
+    // The expectation is that it remains unmangled.
+    expect(actualHref).toBe(href);
   });
 });
