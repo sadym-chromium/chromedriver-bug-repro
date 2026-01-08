@@ -17,12 +17,17 @@
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 import io.appium.java_client.android.AndroidDriver;
+import io.appium.java_client.android.nativekey.AndroidKey;
+import io.appium.java_client.android.nativekey.KeyEvent;
 import io.appium.java_client.android.options.UiAutomator2Options;
 import java.net.MalformedURLException;
 import java.net.URL;
+import java.util.Set;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.openqa.selenium.By;
+import org.openqa.selenium.WindowType;
 
 public class RegressionTest {
 
@@ -62,6 +67,46 @@ public class RegressionTest {
 
   @Test
   public void ISSUE_REPRODUCTION() {
-    // Add test reproducing the issue here.
+    // 1. Open initial page
+    driver.get("https://www.google.com");
+
+    // 2. Open a new tab (Simulate opening a link in a new webview)
+    driver.switchTo().newWindow(WindowType.TAB);
+    driver.get("https://example.com");
+    
+    // 3. Switch to NATIVE_APP
+    driver.context("NATIVE_APP");
+    
+    // 4. Press BACK button to close the current tab
+    // In Chrome, if you are on the first page of a tab, Back often closes it.
+    driver.pressKey(new KeyEvent(AndroidKey.BACK));
+    try { Thread.sleep(2000); } catch (InterruptedException e) {}
+
+    // 5. Open another new tab (Simulate opening a second link)
+    // We need to switch context back to WEBVIEW first to use Selenium commands to open a window
+    // BUT the bug is that switching to WEBVIEW fails or finding elements fails.
+    // If we use driver.switchTo().newWindow() it might mask the issue because it handles context.
+    
+    // Let's try to find the webview context again.
+    Set<String> contexts = driver.getContextHandles();
+    String webviewContext = null;
+    for (String context : contexts) {
+      if (!"NATIVE_APP".equals(context)) {
+        webviewContext = context;
+        break;
+      }
+    }
+    
+    if (webviewContext != null) {
+        driver.context(webviewContext);
+    }
+    
+    // Open the new "link"
+    driver.switchTo().newWindow(WindowType.TAB);
+    driver.get("https://www.google.com");
+
+    // 6. Try to find an element. 
+    // If the driver is confused about the windows because of the native close, this might fail.
+    driver.findElement(By.name("q"));
   }
 }
