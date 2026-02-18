@@ -31,19 +31,19 @@ public class RegressionTest {
   @BeforeEach
   public void setUp() {
     ChromeOptions options = new ChromeOptions();
+    // The bug was reported for headless mode.
+    // It reproduces in both '--headless' (new) and '--headless=old' in Chrome 119.
     options.addArguments("--headless");
     options.addArguments("--no-sandbox");
 
-    // By default, the test uses the latest stable Chrome version.
-    // Replace the "stable" with the specific browser version if needed,
-    // e.g. 'canary', '115' or '144.0.7534.0' for example.
-    options.setBrowserVersion("stable");
+    // Reproduces in Chrome 119 (as reported).
+    // Note: This issue appears to be fixed in later versions (tested with 145).
+    options.setBrowserVersion("119");
 
-    ChromeDriverService service =
-        new ChromeDriverService.Builder()
-            .withLogFile(new java.io.File("chromedriver.log"))
-            .withVerbose(true)
-            .build();
+    ChromeDriverService service = new ChromeDriverService.Builder()
+        .withLogFile(new java.io.File("chromedriver.log"))
+        .withVerbose(true)
+        .build();
 
     driver = new ChromeDriver(service, options);
   }
@@ -64,7 +64,33 @@ public class RegressionTest {
   }
 
   @Test
-  public void ISSUE_REPRODUCTION() {
-    // Add test reproducing the issue here.
+  public void reproduce_issue_42323674() {
+    // Navigate to the reproduction URL
+    driver.get("https://pegelonline.wsv.de/webservice/dokuRestapi");
+
+    // Locate a link that contains date parameters.
+    // The bug causes ISO-8601 dates in the 'href' attribute to be reformatted
+    // into human-readable strings (e.g., 'Tue Jan 27 09:00:00 CET 2026') in
+    // headless mode.
+    org.openqa.selenium.WebElement element = driver
+        .findElement(org.openqa.selenium.By.xpath("//a[contains(@href, 'start=')]"));
+    String href = element.getAttribute("href");
+
+    System.out.println("Retrieved href: " + href);
+
+    // We expect the ISO-8601 format to be preserved (e.g., 2023-10-26T09:00).
+    // A reformatted date would typically contain month names like 'Jan', 'Feb',
+    // etc.
+    boolean isReformatted = href.matches(".*(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec).*");
+
+    // Assert that it is NOT reformatted. This assertion will FAIL if the bug is
+    // present.
+    org.junit.jupiter.api.Assertions.assertFalse(isReformatted,
+        "The href attribute was reformatted into a human-readable date string in headless mode.\nActual href: " + href);
+
+    // Also check for the expected ISO pattern to ensure it matches what's expected.
+    boolean matchesExpected = href.matches(".*start=\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}.*");
+    org.junit.jupiter.api.Assertions.assertTrue(matchesExpected,
+        "The href attribute does not match the expected ISO-8601 format.\nActual href: " + href);
   }
 }
